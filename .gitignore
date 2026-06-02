@@ -1,0 +1,35 @@
+other_methods/
+scripts/bash_logs
+data/vis/
+outputs/
+wandb/
+wandb_arxived/
+LLM/LLaVA-Med
+unsloth_compiled_cache/
+models/dinov3
+cloned/
+models/__pycache__
+checkpoints/
+visualizations/
+results/
+apm_attention/
+notebooks/
+
+.vscode/
+__pycache__/
+*/__pycache__/
+*/*/__pycache__/
+
+
+*.log
+*.pyc
+*.csv
+*.txt
+*.log
+# *.png
+# *.jpg
+*.json
+*.pdf
+*.pyc
+
+.env

@@ -1,0 +1,183 @@
+apm:
+  mode: train # train, inference
+  output_dir: /path/to/experiments/
+  experiment_name: apm
+  device: cuda
+  seed: 2025
+  return_model_only: false
+  debug: false
+
+  model:
+    model_size: small # remove
+    backbone: resnet50 # remove
+    dilation: false             
+    position_embedding: sine    
+    pre_norm: false           
+    freeze_vis_enc: false 
+
+    enc_layers: 4               # Number of encoder layers
+    dec_layers: 4               # Number of decoder layers
+    dim_feedforward: 1024       # Feedforward layer dimension
+    hidden_dim: 256             # Embedding size
+    dropout: 0.1                # Dropout in transformer
+    nheads: 4                   # Number of attention heads
+    num_queries: 36             # Number of object queries
+    return_oq: false            # Return object queries (for text model)
+    mha_head_type: S
+
+    text_enc_type: microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext  # Text encoder model
+    proj_dim: 16                # Projection dim for contrastive learning
+    pca_proj: false
+    frozen_text_model: all # all or backbone same thingie
+
+  training:
+    # Save and resume settings
+    resume: ""
+    start_epoch: 0              # Start epoch
+    epochs: 45                 # Number of training epochs
+    lr: 0.0001                     # Learning rate
+    lr_backbone: 0.00001
+    weight_decay: 0.0001          # Weight decay
+    lr_drop: 200                # Epoch to drop LR
+    clip_max_norm: 0.1          # Gradient clipping max norm
+    print_freq: 50
+    eval_freq: 1 
+
+  loss:
+    cl_temp: 0.01
+    cl_loss_bidirectional: true
+    cl_loss_type: kl # kl or ce
+    cl_loss_weight: 1.0
+    object_weights_type: '0'  # '1' for increased weights for Right and Left lung
+
+    aux_loss: true             # Enable auxiliary decoding losses
+
+    set_cost_class: 1          # Class coefficient in matching cost
+    set_cost_bbox: 5           # L1 box coefficient in matching cost
+    set_cost_giou: 2           # GIoU box coefficient in matching cost
+    mask_loss_coef: 0          # Not used
+    dice_loss_coef: 0          # Not used
+
+    label_loss_coef: 0         # Coefficient for class label loss
+    image_label_loss_coef: 2
+    bbox_loss_coef: 5          # Coefficient for L1 bbox loss
+    giou_loss_coef: 3          # Coefficient for GIoU bbox loss
+    eos_coef: 0              # Weight of no-object class in loss
+    cl_loss_coef: 1          # Weight for contrastive loss
+
+    # self_cl_loss: false        # Use self-contrastive loss
+
+  data:
+    image_dir: /path/to/mimic-cxr/images  # Path to MIMIC-CXR images
+    sg_dir: /path/to/chest-imagenome/scene_graphs  # Path to Chest ImaGenome scene graphs
+    labels_csv_path: /path/to/chest-imagenome/data_split_with_labels.csv
+    text_key: findings 
+    num_workers: 2              # Number of data loading workers
+    batch_size: 48
+
+  rag:
+    db_dir: /path/to/rag_db/
+
+  inference:
+    ckpt_path: last_checkpoint.pth
+
+  logging:
+    wandb: false              # Enable Weights & Biases logging
+    wandb_project: vlm_project       # WandB project name
+    wandb_run: ''           # WandB run name
+    green_metric: false
+  
+
+
+lm:
+  resume: checkpoints/lm.pt
+  resume_from_checkpoint: false
+  debug: false
+  eval: false
+  load_last_ckpt_first: false # load the model weights only and not the other meta data from a training run
+  # starting_checkpoint_dir: ""
+  # load_step1_ckpt_first: true
+  # step1_checkpoint_dir: ""
+  # use_apm_inference_for_training: false
+
+  seed: 2025                  # Random seed
+  # device: cuda:0                # Device to use for training/testing
+  num_workers: 1             
+
+  data:
+    image_dir: /path/to/mimic-cxr/images
+    data_dir: /path/to/instruction_tuning_data/
+    dataset_names: ["mimic_vqa", "slake", "radialog_instruct", "mscxr", "vindr_instruct", "mimic_cxr_classification","anatomy_grounding","padchest_gr", "mimic_report_gen"]
+    # dataset_names: ["mscxr"]
+    task: all
+    subset: 1 # will be synced with dataset_names
+    system_prompts: ["You are a specialized AI radiology assistant trained to interpret chest X-ray images. You are given some possible findings about this chest X-ray image. Some of these findings might not be correct. Use the given findings to complete the task", "You are a professional radiology consultant with deep knowledge of thoracic imaging.  You are given some possible findings about this chest X-ray image. Some of these findings might not be correct. Use the given findings to complete the task", "You are a radiology assistant with strong reasoning skills for thoracic imaging.  You are given some possible findings about this chest X-ray image. Some of these findings might not be correct. Use the given findings to complete the task" ]
+
+  sft_config:
+    output_dir: /path/to/experiments/lm
+    num_train_epochs: 2
+    learning_rate: 0.0002
+    per_device_train_batch_size: 2
+    per_device_eval_batch_size: 2 
+    gradient_accumulation_steps: 4
+    gradient_checkpointing: False
+    optim: adamw_torch_fused
+
+    # dataloader_num_workers: 0
+    dataloader_drop_last: True
+
+    logging_steps: 100
+    save_strategy: steps
+    save_steps: 8000
+    eval_strategy: steps
+    eval_steps: 8000
+    eval_accumulation_steps: 2
+    eval_delay: 0
+
+    save_total_limit: 3 
+
+    load_best_model_at_end: true
+    metric_for_best_model: loss
+    greater_is_better: false
+
+    bf16: true
+    max_grad_norm: 0.3
+    warmup_ratio: 0.03
+    lr_scheduler_type: linear
+
+    push_to_hub: false
+    report_to: none
+    disable_tqdm: false
+    run_name: 
+    gradient_checkpointing_kwargs: { use_reentrant: False }
+    dataset_kwargs: {skip_prepare_dataset: True}
+    remove_unused_columns: False
+    label_names: [labels]
+    
+  model_args:
+    core_model: google/medgemma-4b-it
+    # hf_cache_dir: /path/to/huggingface_cache
+    training_step: 2 # 1: alignment (only projectors are trained), 2: (FT)
+    # image_token_type: patch
+    resize_vocab: false
+    add_special_tokens: false
+
+    lora_config:
+      lora_alpha: 16
+      lora_dropout: 0.05
+      r: 16
+      bias: none
+      target_modules: all-linear
+      task_type: CAUSAL_LM
+      modules_to_save: ['lm_head', 'embed_tokens'] # for full FT of some layers (no lora applied)
+
+    image_projectionhead:
+      input_dim: 256
+      hidden_dim: 512
+      output_dim: 2560
+
+    object_projectionhead:
+      input_dim: 16
+      hidden_dim: 512
+      output_dim: 2560
+    
